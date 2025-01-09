@@ -15,6 +15,8 @@ app = Dash(
     suppress_callback_exceptions=True  # Add this line to suppress callback exceptions
 )
 
+server = app.server  # For deployment purposes
+
 # Custom CSS with RTL support and dark theme, combining styles from all apps
 app.index_string = '''
 <!DOCTYPE html>
