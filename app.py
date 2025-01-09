@@ -173,29 +173,15 @@ def get_default_hospital_order():
     priority_totals = {}
     
     try:
-        # Create a debug expander in the UI
-        with st.expander("Debug Info", expanded=False):
-            st.write("Reading priority numbers data...")
-            
-            for year in range(2020, 2025):
-                df = pd.read_excel("data/priority_numbers.xlsx", sheet_name=str(year))
-                st.write(f"\nYear {year} data:")
-                st.write(df.head())
-                
-                # First column is hospital names, second column is first priority counts
-                for i, row in df.iterrows():
-                    hospital = row.iloc[0]  # Hospital name is first column
-                    first_priority_count = float(row.iloc[1])  # First priority count is second column
-                    if pd.notna(first_priority_count):
-                        priority_totals[hospital] = priority_totals.get(hospital, 0) + first_priority_count
-            
-            st.write("\nPriority totals:")
-            priority_df = pd.DataFrame(
-                [(h, c) for h, c in priority_totals.items()],
-                columns=['Hospital', 'Total First Priority']
-            ).sort_values('Total First Priority', ascending=False)
-            st.dataframe(priority_df)
-            
+        for year in range(2020, 2025):
+            df = pd.read_excel("data/priority_numbers.xlsx", sheet_name=str(year))
+            # First column is hospital names, second column is first priority counts
+            for i, row in df.iterrows():
+                hospital = row.iloc[0]  # Hospital name is first column
+                first_priority_count = float(row.iloc[1])  # First priority count is second column
+                if pd.notna(first_priority_count):
+                    priority_totals[hospital] = priority_totals.get(hospital, 0) + first_priority_count
+        
         # Sort hospitals by total first priority requests (descending)
         sorted_hospitals = sorted(priority_totals.items(), key=lambda x: (-x[1], x[0]))
         return [hospital for hospital, _ in sorted_hospitals]
