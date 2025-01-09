@@ -15,23 +15,23 @@ st.markdown("""
     
     /* Wider sidebar settings */
     section[data-testid="stSidebar"] {
-        width: 400px !important;
-        min-width: 400px !important;
-        max-width: 400px !important;
+        width: 600px !important;
+        min-width: 600px !important;
+        max-width: 600px !important;
         position: relative !important;
     }
     
     /* Additional sidebar width enforcement */
     .css-1d391kg, .css-1q7ecm2, [data-testid="stSidebarNav"],
     .css-pkbazv, .css-17eq0hr {
-        width: 400px !important;
-        min-width: 400px !important;
-        max-width: 400px !important;
+        width: 600px !important;
+        min-width: 600px !important;
+        max-width: 600px !important;
     }
     
     /* Ensure sidebar content width */
     .css-1d391kg > div, .css-1q7ecm2 > div {
-        width: 400px !important;
+        width: 600px !important;
     }
     
     /* RTL for main container with adjusted padding */
