@@ -5,7 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 from utils import run_simulation
 
-# Add CSS for RTL support and styling
+# Add CSS for RTL support and styling with wider sidebar
 st.markdown("""
 <style>
     /* Global RTL settings */
@@ -13,17 +13,33 @@ st.markdown("""
         direction: rtl;
     }
     
-    /* RTL for main container */
-    .main .block-container {
-        direction: rtl;
-        padding-right: 5rem;
-        padding-left: 1rem;
+    /* Wider sidebar settings */
+    section[data-testid="stSidebar"] {
+        width: 400px !important;
+        min-width: 400px !important;
+        max-width: 400px !important;
+        position: relative !important;
     }
     
-    /* RTL for sidebar */
-    .css-1d391kg {
-        left: auto !important;
-        right: 0 !important;
+    /* Additional sidebar width enforcement */
+    .css-1d391kg, .css-1q7ecm2, [data-testid="stSidebarNav"],
+    .css-pkbazv, .css-17eq0hr {
+        width: 400px !important;
+        min-width: 400px !important;
+        max-width: 400px !important;
+    }
+    
+    /* Ensure sidebar content width */
+    .css-1d391kg > div, .css-1q7ecm2 > div {
+        width: 400px !important;
+    }
+    
+    /* RTL for main container with adjusted padding */
+    .main .block-container {
+        direction: rtl;
+        padding-right: 420px !important;  /* Increased to account for wider sidebar */
+        padding-left: 1rem !important;
+        margin-right: 0 !important;
     }
     
     /* RTL for tables */
@@ -60,6 +76,11 @@ st.markdown("""
     /* Bar chart direction */
     .recharts-wrapper {
         direction: rtl;
+    }
+
+    /* Fix overlapping issues */
+    .element-container, .stMarkdown {
+        width: 100% !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -529,7 +550,7 @@ def simulation_tab():
         "מספר סימולציות",
         min_value=10,
         max_value=10000,
-        value=1000,
+        value=100,
         step=10
     )
     
