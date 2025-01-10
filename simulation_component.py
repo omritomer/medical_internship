@@ -9,6 +9,11 @@ import time
 from threading import Thread
 from queue import Queue
 import json
+import logging
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize queue for progress updates
 progress_queue = Queue()
@@ -219,10 +224,21 @@ def init_simulation(priorities_data, acceptance_data):
 
 def run_simulation_thread(priorities_data, acceptance_data, year, hospital_order, n_simulations, progress_queue):
     """Run simulation in a separate thread"""
+    logger = logging.getLogger(__name__)
+    
     try:
-        def update_progress(value):
-            progress_queue.put(('progress', value * 100))
+        logger.info(f"Starting simulation thread: year={year}, n_simulations={n_simulations}")
+        logger.info(f"Hospital order: {hospital_order}")
         
+        def update_progress(value):
+            logger.info(f"Progress update: {value*100:.1f}%")
+            try:
+                progress_queue.put(('progress', value * 100))
+                logger.info("Progress successfully queued")
+            except Exception as e:
+                logger.error(f"Failed to queue progress: {str(e)}")
+        
+        logger.info("Running simulation...")
         results = run_simulation(
             priorities_data=priorities_data,
             acceptance_data=acceptance_data,
@@ -232,16 +248,23 @@ def run_simulation_thread(priorities_data, acceptance_data, year, hospital_order
             progress_callback=update_progress
         )
         
+        logger.info("Simulation completed, converting results")
+        logger.info(f"Results index: {results.index.tolist()}")
+        
         # Convert results to a format that can be serialized
         results_dict = {
             'בית חולים': results.index.tolist(),
             'אחוז קבלה': results.values.round(1).astype(str) + '%'
         }
         
-        # Put the results in the queue
+        logger.info("Sending results to queue")
+        logger.info(f"Results dict: {results_dict}")
         progress_queue.put(('results', results_dict))
+        logger.info("Results successfully queued")
         
     except Exception as e:
+        logger.error(f"Error in simulation thread: {str(e)}")
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         progress_queue.put(('error', str(e)))
 
 def create_progress_figure(progress):
@@ -318,6 +341,8 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
     import pandas as pd
     from threading import Thread
     import dash_bootstrap_components as dbc
+    import traceback
+
     
     @app.callback(
         Output('hospital-list-container', 'children'),
@@ -387,31 +412,45 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
         prevent_initial_call=True
     )
     def update_progress(n_intervals, run_clicks, stop_clicks):
+        logger.info(f"Update progress callback triggered: intervals={n_intervals}, run_clicks={run_clicks}, stop_clicks={stop_clicks}")
+        
         if ctx.triggered_id == 'stop-simulation-btn':
+            logger.info("Stop button clicked")
             return create_progress_figure(0), True, None
         
         if ctx.triggered_id == 'run-simulation-btn':
+            logger.info("Run button clicked")
             current_progress['value'] = 0
             return create_progress_figure(0), False, None
         
         # Check for new progress in queue
-        while not progress_queue.empty():
-            try:
+        logger.info("Checking queue for updates")
+        try:
+            while not progress_queue.empty():
                 item = progress_queue.get_nowait()
+                logger.info(f"Got queue item: {item}")
+                
                 if isinstance(item, tuple):
                     status, data = item
                     if status == 'results':
+                        logger.info("Processing final results")
+                        logger.info(f"Results data: {data}")
                         return create_progress_figure(100), True, data
                     elif status == 'error':
+                        logger.error(f"Error in simulation: {data}")
                         return create_progress_figure(0), True, {'error': data}
                     elif status == 'progress':
+                        logger.info(f"Progress update: {data}%")
                         current_progress['value'] = data
                 else:
-                    # Legacy progress update
+                    logger.info(f"Legacy progress update: {item}")
                     current_progress['value'] = item
-            except Exception as e:
-                print(f"Error processing queue item: {str(e)}")
+                    
+        except Exception as e:
+            logger.error(f"Error processing queue item: {str(e)}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
         
+        logger.info(f"Returning current progress: {current_progress['value']}")
         return create_progress_figure(current_progress['value']), False, None
 
     @app.callback(
@@ -420,23 +459,29 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
         prevent_initial_call=True
     )
     def update_results(data):
+        logger.info("Update results callback triggered")
+        logger.info(f"Received data: {data}")
+        
         if not data:
+            logger.info("No data received, preventing update")
             raise PreventUpdate
         
         if 'error' in data:
+            logger.error(f"Error in results: {data['error']}")
             return html.Div([
                 html.H4("שגיאה בהרצת הסימולציה:", className="text-danger"),
                 html.Pre(data['error'])
             ], className="mt-4")
         
         try:
-            # Create DataFrame from the stored data
+            logger.info("Creating DataFrame from results")
             df = pd.DataFrame({
                 'בית חולים': data['בית חולים'],
                 'אחוז קבלה': data['אחוז קבלה']
             })
+            logger.info(f"DataFrame created successfully: {df.shape}")
             
-            return dbc.Table.from_dataframe(
+            table = dbc.Table.from_dataframe(
                 df,
                 striped=True,
                 bordered=True,
@@ -444,7 +489,12 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
                 className="mt-4",
                 style={'color': '#ffffff'}
             )
+            logger.info("Table created successfully")
+            return table
+            
         except Exception as e:
+            logger.error(f"Error creating results table: {str(e)}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return html.Div([
                 html.H4("שגיאה בהצגת התוצאות:", className="text-danger"),
                 html.Pre(str(e))
@@ -478,10 +528,14 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
         prevent_initial_call=True
     )
     def start_simulation(run_clicks, year, n_simulations, hospitals):
+        logger.info(f"Start simulation triggered: clicks={run_clicks}, year={year}, n_simulations={n_simulations}")
+        
         if not run_clicks:
+            logger.info("No run clicks, preventing update")
             raise PreventUpdate
         
         # Clear the queue
+        logger.info("Clearing queue")
         while not progress_queue.empty():
             try:
                 progress_queue.get_nowait()
@@ -489,6 +543,7 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
                 pass
         
         hospital_order = [h[h.find(". ") + 2:] for h in hospitals]
+        logger.info(f"Hospital order: {hospital_order}")
         
         # Start simulation in a separate thread
         thread = Thread(
@@ -497,5 +552,6 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
         )
         thread.daemon = True
         thread.start()
+        logger.info("Simulation thread started")
         
         return ''
