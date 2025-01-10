@@ -1,7 +1,9 @@
 from dash import Dash, html, dcc, dependencies
 import dash_bootstrap_components as dbc
-from calculator import app as calculator_app
-from simulation import app as simulation_app
+import calculator_component
+import simulation_component
+import stats_component
+import pandas as pd
 
 # Initialize the main app with RTL support and dark theme
 app = Dash(
@@ -11,12 +13,12 @@ app = Dash(
         'https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.rtl.min.css'
     ],
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
-    suppress_callback_exceptions=True  # Add this line to suppress callback exceptions
+    suppress_callback_exceptions=True
 )
 
-server = app.server  # For deployment purposes
+server = app.server
 
-# Custom CSS with RTL support and dark theme, combining styles from all apps
+# Custom CSS with RTL support and dark theme
 app.index_string = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
@@ -54,7 +56,7 @@ app.index_string = '''
                 border-color: #444;
             }
 
-            /* Listbox styles from calculator app */
+            /* Listbox styles */
             .listbox {
                 border: 1px solid #444;
                 height: 300px;
@@ -177,30 +179,6 @@ app.index_string = '''
             .border-end {
                 border-color: #444 !important;
             }
-            
-            /* Simulation-specific styles */
-            .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td {
-                text-align: right;
-            }
-            .dark-dropdown .Select-control {
-                background-color: #2a2a2a !important;
-                color: white !important;
-                border-color: #404040 !important;
-            }
-            .dark-dropdown .Select-menu-outer {
-                background-color: #2a2a2a !important;
-                color: white !important;
-                border-color: #404040 !important;
-            }
-            .dark-dropdown .Select-value-label {
-                color: white !important;
-            }
-            .dark-dropdown .Select-option:hover {
-                background-color: #404040 !important;
-            }
-            .dark-dropdown .Select.is-open > .Select-control {
-                border-color: #0d6efd !important;
-            }
         </style>
     </head>
     <body>
@@ -214,10 +192,52 @@ app.index_string = '''
 </html>
 '''
 
+def load_data():
+    """Load data function to be shared across components"""
+    # Load acceptance ratios
+    data = {}
+    for year in range(2020, 2025):
+        df = pd.read_excel(
+            f"data/acceptance_ratios.xlsx", 
+            sheet_name=str(year),
+            engine='openpyxl'
+        )
+        data[str(year)] = df
+    
+    # Load priorities and acceptance data for simulation
+    priorities_data = {}
+    acceptance_data = {}
+    for year in range(2020, 2025):
+        priorities_df = pd.read_excel(
+            f"data/priority_numbers.xlsx", 
+            sheet_name=str(year),
+            engine='openpyxl'
+        )
+        acceptance_df = pd.read_excel(
+            f"data/acceptance_numbers.xlsx", 
+            sheet_name=str(year),
+            engine='openpyxl'
+        )
+        priorities_data[str(year)] = priorities_df
+        acceptance_data[str(year)] = acceptance_df
+    
+    return data, priorities_data, acceptance_data
+
+# Load all required data
+acceptance_ratios, priorities_data, acceptance_data = load_data()
+
+# Initialize the components
+calculator_layout = calculator_component.init_calculator(lambda: acceptance_ratios)
+stats_layout = stats_component.init_stats(lambda: acceptance_ratios)
+simulation_layout = simulation_component.init_simulation(priorities_data, acceptance_data)
+
 # Create the tab navigation
 tabs = dbc.Tabs([
     dbc.Tab(label="מחשבון", tab_id="calculator", children=[
         html.Div(id="calculator-content", className="mt-4")
+    ]),
+    dbc.Tab(label="סטטיסטיקות", tab_id="statistics", children=[
+        html.Div(id="statistics-content", className="mt-4")
     ]),
     dbc.Tab(label="סימולציה", tab_id="simulation", children=[
         html.Div(id="simulation-content", className="mt-4")
@@ -226,7 +246,7 @@ tabs = dbc.Tabs([
 
 # Main app layout
 app.layout = dbc.Container([
-    html.H1("מערכת ניהול וניתוח נתונים", className="text-center my-4"),
+    html.H1("סטטיסטיקות הגרלת סטאז'", className="text-center my-4"),
     tabs,
     # Add stores and other components needed by all apps
     dcc.Store(id='simulation-results-store'),
@@ -234,30 +254,24 @@ app.layout = dbc.Container([
     html.Div(id='_simulation-trigger', style={'display': 'none'})
 ], fluid=True)
 
-# Register callbacks from individual apps
-for callback in calculator_app.callback_map:
-    if callback in app.callback_map:
-        continue
-    app.callback_map[callback] = calculator_app.callback_map[callback]
-
-for callback in simulation_app.callback_map:
-    if callback in app.callback_map:
-        continue
-    app.callback_map[callback] = simulation_app.callback_map[callback]
-
 # Update tab content callback
 @app.callback(
     [
         dependencies.Output("calculator-content", "children"),
-        dependencies.Output("simulation-content", "children")
+        dependencies.Output("simulation-content", "children"),
+        dependencies.Output("statistics-content", "children")
     ],
     dependencies.Input("tabs", "active_tab")
 )
 def render_tab_content(active_tab):
-    calculator_visible = [] if active_tab != "calculator" else [calculator_app.layout]
-    simulation_visible = [] if active_tab != "simulation" else [simulation_app.layout]
+    calculator_visible = [] if active_tab != "calculator" else [calculator_layout]
+    simulation_visible = [] if active_tab != "simulation" else [simulation_layout]
+    statistics_visible = [] if active_tab != "statistics" else [stats_layout]
     
-    return calculator_visible, simulation_visible
+    return calculator_visible, simulation_visible, statistics_visible
+
+# Register simulation component callbacks
+simulation_component.register_callbacks(app, priorities_data, acceptance_data)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
