@@ -188,7 +188,7 @@ app.layout = html.Div([
             dbc.Col([
                 html.H4("טווח שנים", className="mb-4"),
                 dcc.RangeSlider(
-                    id='year-range-slider',
+                    id='calc-year-range-slider',
                     min=2020,
                     max=2024,
                     step=1,
@@ -352,7 +352,7 @@ def update_hospitals(add_clicks, remove_clicks, up_clicks, down_clicks,
     [Output('probability-metrics', 'children'),
      Output('historical-table', 'children')],
     [Input('selected-hospitals', 'children'),
-     Input('year-range-slider', 'value')]
+     Input('calc-year-range-slider', 'value')]
 )
 def update_statistics(selected_items, year_range):
     if not selected_items:

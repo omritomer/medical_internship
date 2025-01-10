@@ -1,7 +1,6 @@
 from dash import Dash, html, dcc, dependencies
 import dash_bootstrap_components as dbc
 from calculator import app as calculator_app
-from stats import app as stats_app
 from simulation import app as simulation_app
 
 # Initialize the main app with RTL support and dark theme
@@ -220,9 +219,6 @@ tabs = dbc.Tabs([
     dbc.Tab(label="מחשבון", tab_id="calculator", children=[
         html.Div(id="calculator-content", className="mt-4")
     ]),
-    dbc.Tab(label="סטטיסטיקות", tab_id="stats", children=[
-        html.Div(id="stats-content", className="mt-4")
-    ]),
     dbc.Tab(label="סימולציה", tab_id="simulation", children=[
         html.Div(id="simulation-content", className="mt-4")
     ])
@@ -244,11 +240,6 @@ for callback in calculator_app.callback_map:
         continue
     app.callback_map[callback] = calculator_app.callback_map[callback]
 
-for callback in stats_app.callback_map:
-    if callback in app.callback_map:
-        continue
-    app.callback_map[callback] = stats_app.callback_map[callback]
-
 for callback in simulation_app.callback_map:
     if callback in app.callback_map:
         continue
@@ -258,17 +249,15 @@ for callback in simulation_app.callback_map:
 @app.callback(
     [
         dependencies.Output("calculator-content", "children"),
-        dependencies.Output("stats-content", "children"),
         dependencies.Output("simulation-content", "children")
     ],
     dependencies.Input("tabs", "active_tab")
 )
 def render_tab_content(active_tab):
     calculator_visible = [] if active_tab != "calculator" else [calculator_app.layout]
-    stats_visible = [] if active_tab != "stats" else [stats_app.layout]
     simulation_visible = [] if active_tab != "simulation" else [simulation_app.layout]
     
-    return calculator_visible, stats_visible, simulation_visible
+    return calculator_visible, simulation_visible
 
 if __name__ == '__main__':
     app.run_server(debug=True)
