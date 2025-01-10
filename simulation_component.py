@@ -221,8 +221,8 @@ def run_simulation_thread(priorities_data, acceptance_data, year, hospital_order
     """Run simulation in a separate thread"""
     try:
         def update_progress(value):
-            progress_queue.put(value * 100)
-            
+            progress_queue.put(('progress', value * 100))
+        
         results = run_simulation(
             priorities_data=priorities_data,
             acceptance_data=acceptance_data,
@@ -232,8 +232,14 @@ def run_simulation_thread(priorities_data, acceptance_data, year, hospital_order
             progress_callback=update_progress
         )
         
+        # Convert results to a format that can be serialized
+        results_dict = {
+            'בית חולים': results.index.tolist(),
+            'אחוז קבלה': results.values.round(1).astype(str) + '%'
+        }
+        
         # Put the results in the queue
-        progress_queue.put(('results', results))
+        progress_queue.put(('results', results_dict))
         
     except Exception as e:
         progress_queue.put(('error', str(e)))
@@ -287,6 +293,19 @@ def create_progress_figure(progress):
             }]
         }
     }
+
+def safe_queue_put(queue, item):
+    try:
+        queue.put_nowait(item)
+    except Exception as e:
+        print(f"Error putting item in queue: {str(e)}")
+
+def safe_queue_get(queue):
+    try:
+        return queue.get_nowait()
+    except Exception as e:
+        print(f"Error getting item from queue: {str(e)}")
+        return None
 
 def register_callbacks(app, priorities_data=None, acceptance_data=None):
     """Register all callbacks for the simulation component"""
@@ -377,21 +396,21 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
         
         # Check for new progress in queue
         while not progress_queue.empty():
-            item = progress_queue.get()
-            if isinstance(item, tuple):
-                # This is a results or error message
-                status, data = item
-                if status == 'results':
-                    results_df = pd.DataFrame({
-                        'בית חולים': data.index,
-                        'אחוז קבלה': data.values.round(1).astype(str) + '%'
-                    })
-                    return create_progress_figure(100), True, results_df.to_dict('records')
-                elif status == 'error':
-                    return create_progress_figure(0), True, {'error': data}
-            else:
-                # This is a progress update
-                current_progress['value'] = item
+            try:
+                item = progress_queue.get_nowait()
+                if isinstance(item, tuple):
+                    status, data = item
+                    if status == 'results':
+                        return create_progress_figure(100), True, data
+                    elif status == 'error':
+                        return create_progress_figure(0), True, {'error': data}
+                    elif status == 'progress':
+                        current_progress['value'] = data
+                else:
+                    # Legacy progress update
+                    current_progress['value'] = item
+            except Exception as e:
+                print(f"Error processing queue item: {str(e)}")
         
         return create_progress_figure(current_progress['value']), False, None
 
@@ -410,14 +429,26 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
                 html.Pre(data['error'])
             ], className="mt-4")
         
-        return dbc.Table.from_dataframe(
-            pd.DataFrame(data),
-            striped=True,
-            bordered=True,
-            hover=True,
-            className="mt-4",
-            style={'color': '#ffffff'}
-        )
+        try:
+            # Create DataFrame from the stored data
+            df = pd.DataFrame({
+                'בית חולים': data['בית חולים'],
+                'אחוז קבלה': data['אחוז קבלה']
+            })
+            
+            return dbc.Table.from_dataframe(
+                df,
+                striped=True,
+                bordered=True,
+                hover=True,
+                className="mt-4",
+                style={'color': '#ffffff'}
+            )
+        except Exception as e:
+            return html.Div([
+                html.H4("שגיאה בהצגת התוצאות:", className="text-danger"),
+                html.Pre(str(e))
+            ], className="mt-4")
 
     @app.callback(
         [Output('run-simulation-btn', 'disabled'),
@@ -452,7 +483,10 @@ def register_callbacks(app, priorities_data=None, acceptance_data=None):
         
         # Clear the queue
         while not progress_queue.empty():
-            progress_queue.get()
+            try:
+                progress_queue.get_nowait()
+            except:
+                pass
         
         hospital_order = [h[h.find(". ") + 2:] for h in hospitals]
         
