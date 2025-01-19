@@ -2,7 +2,7 @@ from dash import html, dcc, callback, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 import pandas as pd
 import numpy as np
-from utils import run_simulation
+from api import run_simulation
 import traceback
 from dash.exceptions import PreventUpdate
 import time

@@ -57,8 +57,7 @@ def generate_intern_priorities(df: pd.DataFrame) -> list[str]:
     return priorities
 
 
-def generate_interns_data(df: pd.DataFrame, n_interns: int,
-                          seed=None) -> pd.DataFrame:
+def generate_interns_data(df: pd.DataFrame, n_interns: int) -> pd.DataFrame:
     """
     Generate priorities for multiple interns based on a year's data.
     
@@ -71,7 +70,6 @@ def generate_interns_data(df: pd.DataFrame, n_interns: int,
         pd.DataFrame: DataFrame where each row represents an intern's priorities
                      and columns are priority numbers
     """
-    np.random.seed(seed)
     # Get hospital names and initialize data structures once
     hospital_names = df.iloc[:, 0].values
     n_hospitals = len(hospital_names)
