@@ -10,7 +10,6 @@ dash-html-components==2.0.0
 dash-table==5.0.0
 et_xmlfile==2.0.0
 Flask==3.0.3
-gunicorn==23.0.0
 idna==3.10
 importlib_metadata==8.5.0
 itsdangerous==2.2.0
@@ -22,6 +21,7 @@ openpyxl==3.1.5
 packaging==24.2
 pandas==2.2.3
 plotly==5.24.1
+PuLP==2.9.0
 python-dateutil==2.9.0.post0
 pytz==2024.2
 requests==2.32.3
