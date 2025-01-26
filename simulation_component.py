@@ -154,7 +154,7 @@ def init_simulation(priorities_data, acceptance_data):
                     id='simulation-slider',
                     min=10,
                     max=1000,
-                    value=100,
+                    value=10,
                     step=10,
                     marks={i: str(i) for i in [10, 100, 250, 500, 750, 1000]},
                     className="mb-3"
