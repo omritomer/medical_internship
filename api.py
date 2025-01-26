@@ -11,7 +11,7 @@ def run_simulation(
     year: str | int,
     intern_data: list,
     n_permutations: int = 1000,
-    method: {'dfa', 'rsd'} = 'dfa',
+    method: {'dfa', 'rsd'} = 'rsd',
     progress_callback=None
 ):
     """
